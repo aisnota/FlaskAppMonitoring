@@ -1,0 +1,22 @@
+# kube-prometheus-stack 기본값에서 자주 손대는 포인트만 최소로 둔 템플릿입니다.
+# 지금은 "설치까지" 목적이니 비워두거나 필요한 것만 추가하세요.
+
+grafana:
+  enabled: true
+
+prometheus:
+  prometheusSpec: {}
+    # 운영/장기보관 고려 전까지는 기본값으로 두는 편이 안전
+    # retention: 15d
+    # storageSpec:
+    #   volumeClaimTemplate:
+    #     spec:
+    #       storageClassName: gp2
+    #       accessModes: ["ReadWriteOnce"]
+    #       resources:
+    #         requests:
+    #           storage: 20Gi
+
+
+alertmanager:
+  enabled: true
