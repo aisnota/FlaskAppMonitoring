@@ -1,0 +1,93 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: critical-recording-rules
+  namespace: monitoring
+  labels:
+    app: prometheus
+    role: recording-rules
+    priority: critical
+    release: prometheus
+spec:
+  groups:
+  - name: k8s.critical.rules
+    rules:
+    # 가장 중요한 애플리케이션 메트릭
+    - record: app:http_requests:rate5m
+      expr: sum(rate(http_server_requests_seconds_count[5m])) by (namespace, service, status_code)
+    
+    - record: app:http_requests_errors:ratio_rate5m
+      expr: |
+        sum(rate(http_server_requests_seconds_count{status_code=~"5.."}[5m])) by (namespace, service)
+        /
+        sum(rate(http_server_requests_seconds_count[5m])) by (namespace, service)
+    
+    - record: app:http_requests_latency:p95_rate5m
+      expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (namespace, service, le))
+    
+    # ALB 메트릭
+    - record: alb:request_count:rate5m
+      expr: sum(rate(aws_alb_request_count_total[5m])) by (load_balancer)
+    
+    - record: alb:target_response_time:p95_rate5m
+      expr: histogram_quantile(0.95, sum(rate(aws_alb_target_response_time_seconds_bucket[5m])) by (load_balancer, le))
+    
+    - record: alb:http_code_target_4xx_count:rate5m
+      expr: sum(rate(aws_alb_http_code_target_4xx_count_total[5m])) by (load_balancer)
+    
+    - record: alb:http_code_target_5xx_count:rate5m
+      expr: sum(rate(aws_alb_http_code_target_5xx_count_total[5m])) by (load_balancer)
+    
+    - record: alb:http_code_elb_5xx_count:rate5m
+      expr: sum(rate(aws_alb_http_code_elb_5xx_count_total[5m])) by (load_balancer)
+    
+    # 서비스 가용성 메트릭
+    - record: service:availability:ratio
+      expr: avg(kube_endpoint_address_available) by (namespace, service) / avg(kube_endpoint_address_total) by (namespace, service)
+    
+    # 백엔드 애플리케이션 특화 메트릭
+    - record: backend:api_calls:rate5m
+      expr: sum(rate(http_server_requests_seconds_count{namespace="backend"}[5m])) by (path, method, status_code)
+    
+    - record: backend:api_latency:p95_rate5m
+      expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{namespace="backend"}[5m])) by (path, method, le))
+    
+    - record: backend:error_rate:ratio_rate5m
+      expr: |
+        sum(rate(http_server_requests_seconds_count{namespace="backend", status_code=~"5.."}[5m])) by (path, method)
+        /
+        sum(rate(http_server_requests_seconds_count{namespace="backend"}[5m])) by (path, method)
+    
+    # 가장 중요한 시스템 메트릭
+    - record: node:cpu_utilization:avg5m
+      expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+    
+    - record: node:memory_utilization:percent
+      expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100
+    
+    - record: node:disk_utilization:percent
+      expr: 100 - ((node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"})
+    
+    # 네트워크 메트릭 (Node Exporter에서 가져옴)
+    - record: node:network:receive:bytes:rate5m
+      expr: sum by (instance) (rate(node_network_receive_bytes_total[5m]))
+    
+    - record: node:network:transmit:bytes:rate5m
+      expr: sum by (instance) (rate(node_network_transmit_bytes_total[5m]))
+    
+    # 가장 중요한 Pod 메트릭
+    - record: pod:cpu_utilization:percent
+      expr: sum(rate(container_cpu_usage_seconds_total{container!="POD", container!=""}[5m])) by (namespace, pod) * 100
+    
+    - record: pod:memory_utilization:percent
+      expr: sum(container_memory_working_set_bytes{container!="POD", container!=""}) by (namespace, pod) / sum(container_spec_memory_limit_bytes{container!="POD", container!=""}) by (namespace, pod) * 100 != +Inf
+      
+    - record: pod:restart_count:sum
+      expr: sum(kube_pod_container_status_restarts_total) by (namespace, pod)
+    
+    # Ingress 메트릭
+    - record: ingress:requests:rate5m
+      expr: sum(rate(nginx_ingress_controller_requests[5m])) by (ingress, namespace, status_code)
+    
+    - record: ingress:latency:p95_rate5m
+      expr: histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])) by (ingress, namespace, le)) 

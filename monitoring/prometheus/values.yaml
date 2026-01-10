@@ -1,0 +1,320 @@
+# Prometheus Kubernetes 스택 설정 파일
+# 모든 설정이 통합된 단일 구성 파일
+
+#---------------------------------
+# 1. 전역 설정
+#---------------------------------
+# 리소스 이름 단순화
+fullnameOverride: prometheus
+nameOverride: prometheus
+
+# 기본 스크레이핑 및 평가 설정
+scrapeInterval: 300s      # 메트릭 수집 간격
+evaluationInterval: 300s  # 규칙 평가 간격
+
+# 최적화 설정
+extraFlags:
+  - "storage.tsdb.wal-compression"  # WAL 압축 활성화
+
+# Prometheus 스크레이핑 설정
+# 기본적으로 kubernetes-service-endpoints, kubernetes-pods 등을 자동으로 발견하도록 설정
+serviceDiscovery:
+  enabled: true
+
+#---------------------------------
+# 3. 활성화된 컴포넌트 설정
+#---------------------------------
+# Kubelet 모니터링 (활성화)
+kubelet:
+  enabled: true
+
+# CoreDNS 모니터링 (활성화)
+coreDns:
+  enabled: true
+  service:
+    enabled: true
+  serviceMonitor:
+    enabled: true
+
+# Node Exporter (활성화)
+nodeExporter:
+  enabled: true
+  # Node Exporter의 자세한 설정
+  hostRootfs: true
+  hostNetwork: true
+  hostPID: true
+  image:
+    repository: quay.io/prometheus/node-exporter
+    tag: v1.5.0
+  extraArgs:
+    - --collector.filesystem.ignored-mount-points=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+)($|/)
+    - --collector.netdev
+    - --collector.netstat
+    - --collector.meminfo
+    - --collector.cpu
+    - --collector.diskstats
+    - --collector.filesystem
+    - --collector.loadavg
+  service:
+    port: 9100
+    targetPort: 9100
+    type: ClusterIP
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+    relabelings:
+      - sourceLabels: [__meta_kubernetes_pod_node_name]
+        targetLabel: node
+        action: replace
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+  tolerations:
+    - operator: "Exists"
+
+# Kube State Metrics (활성화)
+kubeStateMetrics:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+  nodeSelector:
+    eks.amazonaws.com/nodegroup: monitoring-node-group
+
+# Prometheus Operator (활성화)
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 50m
+      memory: 128Mi
+  nodeSelector:
+    eks.amazonaws.com/nodegroup: monitoring-node-group
+  admissionWebhooks:
+    enabled: true
+    patch:
+      enabled: true
+
+#---------------------------------
+# 4. 비활성화된 컴포넌트 설정
+#---------------------------------
+# Grafana (비활성화 - 별도 설치 예정)
+grafana:
+  enabled: false
+  service:
+    enabled: false
+    port: 0
+    targetPort: 0
+  serviceMonitor:
+    enabled: false
+  sidecar:
+    dashboards:
+      enabled: false
+    datasources:
+      enabled: false
+  forceDeployDashboards: false
+  forceDeployDatasources: false
+  defaultDashboardsEnabled: false
+
+# Kube API Server (비활성화 - EKS 관리)
+kubeApiServer:
+  enabled: false
+  service:
+    enabled: false
+    port: 0
+    targetPort: 0
+  serviceMonitor:
+    enabled: false
+    # 서비스 모니터 라벨 추가
+    additionalLabels:
+      k8s-app: "disabled"
+
+# Kube DNS (비활성화)
+kubeDns:
+  enabled: false
+  service:
+    enabled: false
+    port: 0
+    targetPort: 0
+  serviceMonitor:
+    enabled: false
+    # 서비스 모니터 라벨 추가
+    additionalLabels:
+      k8s-app: "disabled"
+
+# Kube Controller Manager (비활성화 - EKS 관리)
+kubeControllerManager:
+  enabled: false
+  service:
+    enabled: false
+    port: 0
+    targetPort: 0
+  serviceMonitor:
+    enabled: false
+    # 서비스 모니터 라벨 추가
+    additionalLabels:
+      k8s-app: "disabled"
+
+# Kube Scheduler (비활성화 - EKS 관리)
+kubeScheduler:
+  enabled: false
+  service:
+    enabled: false
+    port: 0
+    targetPort: 0
+  serviceMonitor:
+    enabled: false
+    # 서비스 모니터 라벨 추가
+    additionalLabels:
+      k8s-app: "disabled"
+
+# Kube ETCD (비활성화 - EKS 관리)
+kubeEtcd:
+  enabled: false
+  service:
+    enabled: false
+    port: 0
+    targetPort: 0
+  serviceMonitor:
+    enabled: false
+    # 서비스 모니터 라벨 추가
+    additionalLabels:
+      k8s-app: "disabled"
+
+# Kube Proxy (비활성화 - 불필요)
+kubeProxy:
+  enabled: false
+  service:
+    enabled: false
+    port: 0
+    targetPort: 0
+  serviceMonitor:
+    enabled: false
+    # 서비스 모니터 라벨 추가
+    additionalLabels:
+      k8s-app: "disabled"
+
+#---------------------------------
+# 5. Prometheus 서버 설정
+#---------------------------------
+server:
+  retention: 1d  # 데이터 보존 기간
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+  nodeSelector:
+    eks.amazonaws.com/nodegroup: monitoring-node-group
+  persistentVolume:
+    enabled: true
+    size: 8Gi
+    storageClass: "gp3"
+  securityContext:
+    runAsUser: 65534
+    runAsNonRoot: true
+    fsGroup: 65534
+
+# Prometheus 고급 설정
+prometheus:
+  prometheusSpec:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 300m
+        memory: 512Mi
+    # 커스텀 규칙 선택자 설정
+    ruleSelector:
+      matchExpressions:
+      - key: app
+        operator: In
+        values:
+        - prometheus
+      - key: role
+        operator: In
+        values:
+        - alert-rules
+        - recording-rules
+    updateStrategy:
+      type: RollingUpdate
+    podDisruptionBudget:
+      enabled: false
+    # 서비스 모니터 선택자 설정
+    serviceMonitorSelector:
+      matchLabels:
+        app: prometheus
+    # 서비스 모니터 네임스페이스 선택자 설정 - 모니터링 네임스페이스로 제한
+    serviceMonitorNamespaceSelector:
+      matchNames:
+        - monitoring
+    externalLabels:
+      cluster: production
+      environment: eks
+    nodeSelector:
+      eks.amazonaws.com/nodegroup: monitoring-node-group
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 8Gi
+
+#---------------------------------
+# 6. Alertmanager 설정
+#---------------------------------
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 50m
+        memory: 128Mi
+    podDisruptionBudget:
+      enabled: false
+    updateStrategy:
+      type: RollingUpdate
+    routePrefix: /alertmanager
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: "gp3"
+  nodeSelector:
+    eks.amazonaws.com/nodegroup: monitoring-node-group
+  # 알림 라우팅 설정
+  config:
+    route:
+      group_by: ['job', 'alertname', 'namespace']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'null'
+      routes:
+      - match:
+          alertname: Watchdog
+        receiver: 'null'
+    receivers:
+    - name: 'null' 

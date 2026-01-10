@@ -1,0 +1,21 @@
+prometheus:
+  agentMode: true
+  prometheusSpec:
+    externalLabels:
+      cluster: "on-prem-cluster-1"  # 중앙 서버에서 이 데이터를 식별할 이름
+    
+    remoteWrite:
+      - url: "http://<EKS_LB_IP>:9090/api/v1/push" # 1단계에서 메모한 EKS IP 입력
+    
+    # [중요] 구성표의 K8s 외부 리소스(물리 PC, DB VM)를 긁어오는 설정
+    additionalScrapeConfigs:
+      - job_name: 'physical-nodes' # PC 1~4 하드웨어 감시
+        static_configs:
+          - targets: 
+            - '<PC1_IP>:9100'
+            - '<PC2_IP>:9100'
+            - '<PC3_IP>:9100'
+            - '<PC4_IP>:9100'
+      - job_name: 'mariadb-vm' # MariaDB VM 감시
+        static_configs:
+          - targets: ['<MARIADB_VM_IP>:9104']

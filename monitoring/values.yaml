@@ -5,7 +5,12 @@ grafana:
   enabled: true
 
 prometheus:
-  prometheusSpec: {}
+  prometheusSpec: 
+    # 에이전트 모드(중앙 모니터링 클러스터 구축 후 세팅)
+    # mode: agent
+    # 데이터 원격 write, 중앙 모니터링 클러스터 url로 연결
+    # remoteWrite:
+    #   - url: http://central-prometheus:9090/api/v1/write
     # 운영/장기보관 고려 전까지는 기본값으로 두는 편이 안전
     # retention: 15d
     # storageSpec:

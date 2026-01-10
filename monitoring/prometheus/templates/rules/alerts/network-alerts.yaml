@@ -1,0 +1,109 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubernetes-network-alerts
+  namespace: monitoring
+  labels:
+    app: prometheus
+    role: alert-rules
+    priority: network
+spec:
+  groups:
+  - name: kubernetes-network-alerts
+    rules:
+    # 네트워크 트래픽 알림
+    - alert: NetworkReceiveErrors
+      expr: rate(node_network_receive_errs_total[5m]) > 0
+      for: 15m
+      labels:
+        severity: warning
+        type: network
+      annotations:
+        summary: "네트워크 수신 오류: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}에서 네트워크 인터페이스 {{ `{{ $labels.device }}` }}의 수신 오류가 감지되었습니다."
+    
+    - alert: NetworkTransmitErrors
+      expr: rate(node_network_transmit_errs_total[5m]) > 0
+      for: 15m
+      labels:
+        severity: warning
+        type: network
+      annotations:
+        summary: "네트워크 전송 오류: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}에서 네트워크 인터페이스 {{ `{{ $labels.device }}` }}의 전송 오류가 감지되었습니다."
+    
+    - alert: NetworkDroppedPackets
+      expr: rate(node_network_receive_drop_total[5m]) > 0 or rate(node_network_transmit_drop_total[5m]) > 0
+      for: 15m
+      labels:
+        severity: warning
+        type: network
+      annotations:
+        summary: "네트워크 패킷 손실: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}에서 네트워크 인터페이스 {{ `{{ $labels.device }}` }}의 패킷 손실이 감지되었습니다."
+    
+    # 서비스 연결 관련 알림
+    - alert: ServiceEndpointsDown
+      expr: kube_endpoint_address_available{endpoint!="kubernetes"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        type: network
+      annotations:
+        summary: "서비스 엔드포인트 다운: {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.endpoint }}` }}"
+        description: "서비스 {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.endpoint }}` }}의 가용한 엔드포인트가 없습니다."
+    
+    - alert: HighNetworkLatency
+      expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (namespace, service, le)) > 1
+      for: 10m
+      labels:
+        severity: warning
+        type: network
+      annotations:
+        summary: "높은 네트워크 지연 시간: {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.service }}` }}"
+        description: "서비스 {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.service }}` }}의 95% 응답 시간이 1초를 초과합니다. (현재 값: {{ `{{ $value }}` }}초)"
+    
+    # 인그레스/로드밸런서 관련 알림
+    - alert: IngressHighLatency
+      expr: histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])) by (ingress, le)) > 1
+      for: 10m
+      labels:
+        severity: warning
+        type: network
+      annotations:
+        summary: "인그레스 높은 지연 시간: {{ `{{ $labels.ingress }}` }}"
+        description: "인그레스 {{ `{{ $labels.ingress }}` }}의 95% 응답 시간이 1초를 초과합니다. (현재 값: {{ `{{ $value }}` }}초)"
+    
+    - alert: IngressHighErrorRate
+      expr: |
+        sum(rate(nginx_ingress_controller_requests{status=~"5.."}[5m])) by (ingress)
+        /
+        sum(rate(nginx_ingress_controller_requests[5m])) by (ingress) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+        type: network
+      annotations:
+        summary: "인그레스 높은 오류율: {{ `{{ $labels.ingress }}` }}"
+        description: "인그레스 {{ `{{ $labels.ingress }}` }}의 5xx 오류 비율이 5%를 초과합니다. (현재 값: {{ `{{ $value | humanizePercentage }}` }})"
+    
+    # DNS 관련 알림
+    - alert: KubeDNSDown
+      expr: absent(up{job="kube-dns"} == 1)
+      for: 5m
+      labels:
+        severity: critical
+        type: network
+      annotations:
+        summary: "KubeDNS 다운"
+        description: "클러스터에서 KubeDNS가 5분 이상 다운되었습니다."
+    
+    - alert: KubeDNSHighLatency
+      expr: histogram_quantile(0.95, sum(rate(coredns_dns_request_duration_seconds_bucket[5m])) by (le)) > 0.1
+      for: 10m
+      labels:
+        severity: warning
+        type: network
+      annotations:
+        summary: "KubeDNS 높은 지연 시간"
+        description: "KubeDNS의 95% DNS 조회 시간이 100ms를 초과합니다. (현재 값: {{ `{{ $value }}` }}초)"

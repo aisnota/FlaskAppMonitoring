@@ -1,0 +1,83 @@
+replicaCount: 1  # 복제본 수 (기본 1)
+
+# 이름 재정의 (선택 사항)
+nameOverride: ""
+fullnameOverride: ""
+
+grafana:
+  # 이미지 설정
+  image:
+    repository: grafana/grafana
+    tag: 9.5.2
+
+  # 기본 홈 대시보드 설정
+  env:
+    GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: "/var/lib/grafana/dashboards/wiary-main.json"
+    GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/"
+    GF_AUTH_HOME_PAGE: "/d/a254d3a2-9418-4a0f-abd2-a12f497ce1eb/wiary-main"
+
+  # 리소스 요청 및 제한
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+  # 보안 설정
+  securityContext:
+    runAsUser: 472
+    runAsGroup: 472
+    fsGroup: 472
+
+  # 영속성 설정
+  persistence:
+    enabled: true
+    size: 3Gi
+    storageClassName: gp2
+
+  # 모니터링 노드 그룹에 배포 (EKS 환경에 맞게 수정)
+  nodeSelector:
+    eks.amazonaws.com/nodegroup: monitoring-node-group
+
+  # 대시보드 자동 설정
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'kubernetes'
+        orgId: 1
+        folder: 'Kubernetes'
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+  
+  # 기본 데이터 소스 설정
+  datasources:
+    prometheus:
+      name: "Prometheus"
+      url: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+      isDefault: true
+  
+  # 관리자 비밀번호 설정
+  adminPassword: admin
+
+  # 서비스 설정
+  service:
+    type: ClusterIP
+    port: 80
+  
+  # 인그레스 설정 (필요시 활성화)
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: grafana.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []

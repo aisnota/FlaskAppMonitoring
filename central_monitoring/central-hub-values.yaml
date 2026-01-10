@@ -1,0 +1,21 @@
+prometheus:
+  prometheusSpec:
+    enableRemoteWriteReceiver: true
+    retention: 10d
+    # 클러스터 내부 노드(VM1,2,3) 및 앱 자동 수집 설정
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    
+    # K8s 외부(Proxmox 호스트, MariaDB VM) 수집 설정
+    additionalScrapeConfigs:
+      - job_name: 'proxmox-host'
+        static_configs:
+          - targets: ['192.168.0.100:9100']
+      - job_name: 'mariadb-vm'
+        static_configs:
+          - targets: ['192.168.0.110:9100']
+
+grafana:
+  service:
+    type: NodePort
+    nodePort: 32300

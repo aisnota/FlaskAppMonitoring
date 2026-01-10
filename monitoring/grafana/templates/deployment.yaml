@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "grafana.fullname" . }}
+  labels:
+    {{- include "grafana.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "grafana.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "grafana.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.grafana.securityContext }}
+      securityContext:
+        runAsUser: {{ .runAsUser }}
+        runAsGroup: {{ .runAsGroup }}
+        fsGroup: {{ .fsGroup }}
+      {{- end }}
+      containers:
+      - name: grafana
+        image: {{ .Values.grafana.image.repository }}:{{ .Values.grafana.image.tag }}
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        env:
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: {{ .Values.grafana.adminPassword | quote }}
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "false"
+        {{- range $key, $value := .Values.grafana.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- with .Values.grafana.resources }}
+        resources:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        volumeMounts:
+        - name: grafana-dashboards-kubernetes-cluster-monitoring
+          mountPath: /var/lib/grafana/dashboards/kubernetes-cluster-monitoring.json
+          subPath: kubernetes-cluster-monitoring.json
+        - name: grafana-dashboards-wiary-main
+          mountPath: /var/lib/grafana/dashboards/wiary-main.json
+          subPath: wiary-main.json
+        - name: grafana-dashboards-wiary-application-monitoring
+          mountPath: /var/lib/grafana/dashboards/wiary-application-monitoring.json
+          subPath: wiary-application-monitoring.json
+        - name: grafana-datasources
+          mountPath: /etc/grafana/provisioning/datasources
+        - name: grafana-dashboard-providers
+          mountPath: /etc/grafana/provisioning/dashboards
+        {{- if .Values.grafana.persistence.enabled }}
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+        {{- end }}
+      volumes:
+      - name: grafana-dashboards-kubernetes-cluster-monitoring
+        configMap:
+          name: {{ include "grafana.fullname" . }}-dashboard-kubernetes-cluster-monitoring
+      - name: grafana-dashboards-wiary-main
+        configMap:
+          name: {{ include "grafana.fullname" . }}-dashboard-wiary-main
+      - name: grafana-dashboards-wiary-application-monitoring
+        configMap:
+          name: {{ include "grafana.fullname" . }}-dashboard-wiary-application-monitoring
+      - name: grafana-datasources
+        configMap:
+          name: {{ include "grafana.fullname" . }}-datasources
+      - name: grafana-dashboard-providers
+        configMap:
+          name: {{ include "grafana.fullname" . }}-dashboards-provider
+      {{- if .Values.grafana.persistence.enabled }}
+      - name: grafana-storage
+        persistentVolumeClaim:
+          claimName: {{ include "grafana.fullname" . }}-storage
+      {{- end }}
+      {{- with .Values.grafana.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

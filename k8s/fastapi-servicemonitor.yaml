@@ -6,11 +6,11 @@ metadata:
   
   # ServiceMonitor 리소스가 들어갈 네임스페이스
   # 보통 **앱 네임스페이스에 둡니다**(앱과 함께 배포/삭제가 쉬움)
-  namespace: default
+  namespace: monitoring
 
   labels:
     app.kubernetes.io/instance: monitoring
-    release: monitoring  # 중요: 설치된 Prometheus 릴리즈 이름과 일치해야 함
+    release: central-monitoring  # 중요: 설치된 Prometheus 릴리즈 이름과 일치해야 함
 spec:
   selector:
   # Service 라벨을 기준으로 수집 대상을 확정

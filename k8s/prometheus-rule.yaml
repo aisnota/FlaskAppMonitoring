@@ -1,3 +1,4 @@
+# alert manager와 연결되는 설정
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:

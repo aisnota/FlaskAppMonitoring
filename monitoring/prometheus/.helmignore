@@ -1,0 +1,16 @@
+# Patterns to ignore when building packages.
+# This supports shell glob matching, relative path matching, and
+# negation (prefixed with !). Only one pattern per line.
+
+
+# Specific files to ignore for Prometheus alerts and recording rules
+# This prevents Helm from processing the templates that contain Prometheus expressions
+templates/rules/alerts/application-alerts.yaml
+templates/rules/alerts/network-alerts.yaml
+templates/rules/alerts/system-alerts.yaml
+# templates/rules/alerts/critical-alerts.yaml  # 주석 처리하여 포함되도록 함
+templates/rules/recording-rules/application-recording-rules.yaml
+templates/rules/recording-rules/system-recording-rules.yaml
+
+# CRD files - already handled by ArgoCD's skipCrds option
+crds/

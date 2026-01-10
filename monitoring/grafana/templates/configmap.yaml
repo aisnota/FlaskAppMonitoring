@@ -1,0 +1,79 @@
+{{- /* Kubernetes Cluster Monitoring Dashboard ConfigMap */ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "grafana.fullname" . }}-dashboard-kubernetes-cluster-monitoring
+  labels:
+    {{- include "grafana.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  kubernetes-cluster-monitoring.json: |-
+{{ .Files.Get "dashboards/Kubernetes-cluster-monitoring.json" | replace "${DS_PROMETHEUS}" "Prometheus" | indent 4 }}
+---
+{{- /* Wiary Main Dashboard ConfigMap */ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "grafana.fullname" . }}-dashboard-wiary-main
+  labels:
+    {{- include "grafana.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  wiary-main.json: |-
+{{ .Files.Get "dashboards/wiary-main.json" | indent 4 }}
+---
+{{- /* Wiary Application Monitoring Dashboard ConfigMap */ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "grafana.fullname" . }}-dashboard-wiary-application-monitoring
+  labels:
+    {{- include "grafana.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  wiary-application-monitoring.json: |-
+{{ .Files.Get "dashboards/Wiary-application-monitoring.json" | indent 4 }}
+---
+{{- /* Datasources ConfigMap */ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "grafana.fullname" . }}-datasources
+  labels:
+    {{- include "grafana.labels" . | nindent 4 }}
+data:
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+      - name: {{ .Values.grafana.datasources.prometheus.name }}
+        type: prometheus
+        access: proxy
+        url: {{ .Values.grafana.datasources.prometheus.url }}
+        isDefault: {{ .Values.grafana.datasources.prometheus.isDefault }}
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki-loki.monitoring:3100
+        isDefault: false
+---
+{{- /* Dashboard Provider ConfigMap */ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "grafana.fullname" . }}-dashboards-provider
+  labels:
+    {{- include "grafana.labels" . | nindent 4 }}
+data:
+  dashboardproviders.yaml: |-
+    apiVersion: 1
+    providers:
+    - name: 'kubernetes'
+      orgId: 1
+      folder: 'Kubernetes'
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+        foldersFromFilesStructure: false
+      updateIntervalSeconds: 10

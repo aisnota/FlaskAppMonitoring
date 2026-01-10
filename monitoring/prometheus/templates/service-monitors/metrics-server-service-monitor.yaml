@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: metrics-server-monitor
+  namespace: monitoring
+  labels:
+    app: prometheus
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: metrics-server
+      app.kubernetes.io/instance: metrics-server
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  endpoints:
+    - port: https
+      interval: 30s
+      scheme: https
+      tlsConfig:
+        insecureSkipVerify: true
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token 

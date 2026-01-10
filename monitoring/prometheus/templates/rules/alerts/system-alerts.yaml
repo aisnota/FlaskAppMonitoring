@@ -1,0 +1,125 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubernetes-system-alerts
+  namespace: monitoring
+  labels:
+    app: prometheus
+    role: alert-rules
+    priority: system
+spec:
+  groups:
+  - name: kubernetes-system-alerts
+    rules:
+    # 노드 수준 알림
+    - alert: NodeCPUUsageHigh
+      expr: node:cpu_utilization:avg5m > 80
+      for: 5m
+      labels:
+        severity: warning
+        type: system
+      annotations:
+        summary: "노드 CPU 사용량 높음: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 CPU 사용량이 5분 이상 80%를 초과했습니다. (현재 값: {{ `{{ $value }}` }}%)"
+        
+    - alert: NodeCPUUsageCritical
+      expr: node:cpu_utilization:avg5m > 95
+      for: 5m
+      labels:
+        severity: critical
+        type: system
+      annotations:
+        summary: "노드 CPU 사용량 심각: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 CPU 사용량이 5분 이상 95%를 초과했습니다. (현재 값: {{ `{{ $value }}` }}%)"
+    
+    - alert: NodeMemoryUsageHigh
+      expr: node:memory_utilization:percent > 80
+      for: 5m
+      labels:
+        severity: warning
+        type: system
+      annotations:
+        summary: "노드 메모리 사용량 높음: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 메모리 사용량이 5분 이상 80%를 초과했습니다. (현재 값: {{ `{{ $value }}` }}%)"
+    
+    - alert: NodeMemoryUsageCritical
+      expr: node:memory_utilization:percent > 95
+      for: 5m
+      labels:
+        severity: critical
+        type: system
+      annotations:
+        summary: "노드 메모리 사용량 심각: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 메모리 사용량이 5분 이상 95%를 초과했습니다. (현재 값: {{ `{{ $value }}` }}%)"
+    
+    - alert: NodeDiskUsageHigh
+      expr: node:disk_utilization:percent > 80
+      for: 5m
+      labels:
+        severity: warning
+        type: system
+      annotations:
+        summary: "노드 디스크 사용량 높음: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 디스크 사용량이 80%를 초과했습니다. (현재 값: {{ `{{ $value }}` }}%)"
+    
+    - alert: NodeDiskUsageCritical
+      expr: node:disk_utilization:percent > 95
+      for: 5m
+      labels:
+        severity: critical
+        type: system
+      annotations:
+        summary: "노드 디스크 사용량 심각: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 디스크 사용량이 95%를 초과했습니다. (현재 값: {{ `{{ $value }}` }}%)"
+    
+    - alert: NodeNotReady
+      expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        type: system
+      annotations:
+        summary: "노드 Ready 상태 아님: {{ `{{ $labels.node }}` }}"
+        description: "노드 {{ `{{ $labels.node }}` }}가 5분 이상 Ready 상태가 아닙니다."
+    
+    # Pod 수준 알림
+    - alert: PodCrashLoopBackOff
+      expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1
+      for: 10m
+      labels:
+        severity: warning
+        type: system
+      annotations:
+        summary: "Pod CrashLoopBackOff: {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.pod }}` }}"
+        description: "Pod {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.pod }}` }}의 컨테이너 {{ `{{ $labels.container }}` }}가 10분 이상 CrashLoopBackOff 상태입니다."
+    
+    - alert: PodRestartingTooMuch
+      expr: increase(kube_pod_container_status_restarts_total[1h]) > 5
+      for: 10m
+      labels:
+        severity: warning
+        type: system
+      annotations:
+        summary: "Pod 재시작 과다: {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.pod }}` }}"
+        description: "Pod {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.pod }}` }}의 컨테이너 {{ `{{ $labels.container }}` }}가 지난 1시간 동안 5회 이상 재시작되었습니다."
+    
+    # 클러스터 수준 알림
+    - alert: KubernetesNodeReady
+      expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+      for: 10m
+      labels:
+        severity: critical
+        type: system
+      annotations:
+        summary: "Kubernetes 노드 Ready 상태 아님: {{ `{{ $labels.node }}` }}"
+        description: "노드 {{ `{{ $labels.node }}` }}가 10분 이상 Ready 상태가 아닙니다."
+    
+    - alert: KubernetesPodNotRunning
+      expr: kube_pod_status_phase{phase=~"Pending|Unknown|Failed"} == 1
+      for: 10m
+      labels:
+        severity: warning
+        type: system
+      annotations:
+        summary: "Kubernetes Pod 실행 중 아님: {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.pod }}` }}"
+        description: "Pod {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.pod }}` }}가 10분 이상 Running 상태가 아닙니다. 현재 상태: {{ `{{ $labels.phase }}` }}"

@@ -1,0 +1,158 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubernetes-critical-alerts
+  namespace: monitoring
+  labels:
+    app: prometheus
+    role: alert-rules
+    priority: critical
+    release: prometheus
+spec:
+  groups:
+  - name: kubernetes-critical-alerts
+    rules:
+    # 시스템 중요 알림
+    - alert: NodeCPUUsageCritical
+      expr: node:cpu_utilization:avg5m > 90
+      for: 5m
+      labels:
+        severity: critical
+        type: system
+      annotations:
+        summary: "노드 CPU 사용량 심각: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 CPU 사용량이 5분 이상 90%를 초과했습니다. (현재 값: {{ `{{ $value }}` }}%)"
+    
+    - alert: NodeMemoryUsageCritical
+      expr: node:memory_utilization:percent > 90
+      for: 5m
+      labels:
+        severity: critical
+        type: system
+      annotations:
+        summary: "노드 메모리 사용량 심각: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 메모리 사용량이 5분 이상 90%를 초과했습니다. (현재 값: {{ `{{ $value }}` }}%)"
+    
+    - alert: NodeDiskUsageHigh
+      expr: node:disk_utilization:percent > 80
+      for: 5m
+      labels:
+        severity: warning
+        type: system
+      annotations:
+        summary: "노드 디스크 사용량 높음: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 디스크 사용량이 80%를 초과했습니다. (현재 값: {{ `{{ $value }}` }}%)"
+    
+    - alert: NodeNotReady
+      expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        type: system
+      annotations:
+        summary: "노드 Ready 상태 아님: {{ `{{ $labels.node }}` }}"
+        description: "노드 {{ `{{ $labels.node }}` }}가 5분 이상 Ready 상태가 아닙니다."
+    
+    # 네트워크 중요 알림
+    - alert: NodeNetworkUtilizationHigh
+      expr: (node:network:receive:bytes:rate5m + node:network:transmit:bytes:rate5m) > 100 * 1024 * 1024
+      for: 10m
+      labels:
+        severity: warning
+        type: network
+      annotations:
+        summary: "노드 네트워크 사용량 높음: {{ `{{ $labels.instance }}` }}"
+        description: "노드 {{ `{{ $labels.instance }}` }}의 네트워크 사용량이 100MB/s를 초과했습니다."
+    
+    - alert: ServiceEndpointsDown
+      expr: kube_endpoint_address_available{endpoint!="kubernetes"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        type: network
+      annotations:
+        summary: "서비스 엔드포인트 다운: {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.endpoint }}` }}"
+        description: "서비스 {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.endpoint }}` }}의 가용한 엔드포인트가 없습니다."
+    
+    # 백엔드 애플리케이션 중요 알림
+    - alert: BackendAPIHighErrorRate
+      expr: backend:error_rate:ratio_rate5m > 0.05
+      for: 5m
+      labels:
+        severity: critical
+        type: application
+      annotations:
+        summary: "백엔드 API 높은 오류율: {{ `{{ $labels.path }}` }}"
+        description: "백엔드 API {{ `{{ $labels.path }}` }}의 오류율이 5%를 초과합니다. (현재 값: {{ `{{ $value | humanizePercentage }}` }})"
+    
+    - alert: BackendAPIHighLatency
+      expr: backend:api_latency:p95_rate5m > 1
+      for: 5m
+      labels:
+        severity: warning
+        type: application
+      annotations:
+        summary: "백엔드 API 응답 지연: {{ `{{ $labels.path }}` }}"
+        description: "백엔드 API {{ `{{ $labels.path }}` }}의 P95 응답 시간이 1초를 초과합니다. (현재 값: {{ `{{ $value }}` }}s)"
+    
+    - alert: BackendServiceUnavailable
+      expr: sum(kube_pod_status_phase{namespace="backend", phase=~"Running|Succeeded"}) < 1
+      for: 2m
+      labels:
+        severity: critical
+        type: application
+      annotations:
+        summary: "백엔드 서비스 사용 불가"
+        description: "백엔드 서비스에 실행 중인 Pod가 없습니다."
+    
+    # ALB 알림
+    - alert: ALBHighErrorRate
+      expr: (alb:http_code_target_5xx_count:rate5m + alb:http_code_elb_5xx_count:rate5m) / alb:request_count:rate5m > 0.05
+      for: 5m
+      labels:
+        severity: critical
+        type: application
+      annotations:
+        summary: "ALB 높은 오류율: {{ `{{ $labels.load_balancer }}` }}"
+        description: "ALB {{ `{{ $labels.load_balancer }}` }}의 5xx 오류율이 5%를 초과합니다."
+    
+    - alert: ALBHighLatency
+      expr: alb:target_response_time:p95_rate5m > 1
+      for: 5m
+      labels:
+        severity: warning
+        type: application
+      annotations:
+        summary: "ALB 높은 응답 지연: {{ `{{ $labels.load_balancer }}` }}"
+        description: "ALB {{ `{{ $labels.load_balancer }}` }}의 P95 응답 시간이 1초를 초과합니다. (현재 값: {{ `{{ $value }}` }}s)"
+    
+    # Ingress 알림
+    - alert: IngressHighErrorRate
+      expr: sum(rate(nginx_ingress_controller_requests{status_code=~"5.."}[5m])) by (ingress, namespace) / sum(rate(nginx_ingress_controller_requests[5m])) by (ingress, namespace) > 0.05
+      for: 5m
+      labels:
+        severity: critical
+        type: application
+      annotations:
+        summary: "Ingress 높은 오류율: {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.ingress }}` }}"
+        description: "Ingress {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.ingress }}` }}의 5xx 오류율이 5%를 초과합니다."
+    
+    - alert: IngressHighLatency
+      expr: ingress:latency:p95_rate5m > 1
+      for: 5m
+      labels:
+        severity: warning
+        type: application
+      annotations:
+        summary: "Ingress 높은 응답 지연: {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.ingress }}` }}"
+        description: "Ingress {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.ingress }}` }}의 P95 응답 시간이 1초를 초과합니다. (현재 값: {{ `{{ $value }}` }}s)"
+    
+    - alert: PodRestartingFrequently
+      expr: pod:restart_count:sum - pod:restart_count:sum offset 1h > 5
+      for: 15m
+      labels:
+        severity: warning
+        type: application
+      annotations:
+        summary: "Pod 자주 재시작: {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.pod }}` }}"
+        description: "Pod {{ `{{ $labels.namespace }}` }}/{{ `{{ $labels.pod }}` }}가 지난 1시간 동안 5회 이상 재시작했습니다."

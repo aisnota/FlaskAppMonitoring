@@ -1,0 +1,61 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: application-recording-rules
+  namespace: monitoring
+  labels:
+    app: prometheus
+    role: recording-rules
+spec:
+  groups:
+  - name: k8s.applications.rules
+    rules:
+    # HTTP 요청 처리율
+    - record: app:http_requests:rate5m
+      expr: sum(rate(http_requests_total[5m])) by (namespace, service, status)
+    
+    # HTTP 오류율
+    - record: app:http_requests_errors:ratio_rate5m
+      expr: |
+        sum(rate(http_requests_total{status=~"5..|4.."}[5m])) by (namespace, service)
+        /
+        sum(rate(http_requests_total[5m])) by (namespace, service)
+    
+    # HTTP 지연 시간 (응답 시간)
+    - record: app:http_requests_latency:p95_rate5m
+      expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (namespace, service, le))
+    
+    - record: app:http_requests_latency:p99_rate5m
+      expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (namespace, service, le))
+    
+    # API 엔드포인트별 요청 처리율
+    - record: app:api_requests:rate5m
+      expr: sum(rate(http_requests_total[5m])) by (namespace, service, handler)
+    
+    # API 엔드포인트별 오류율 (5xx, 4xx)
+    - record: app:api_requests_errors:ratio_rate5m
+      expr: |
+        sum(rate(http_requests_total{status=~"5..|4.."}[5m])) by (namespace, service, handler)
+        /
+        sum(rate(http_requests_total[5m])) by (namespace, service, handler)
+    
+    # API 엔드포인트별 지연 시간
+    - record: app:api_requests_latency:p95_rate5m
+      expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (namespace, service, handler, le))
+
+  - name: k8s.service.rules
+    rules:
+    # 서비스 가용성 (엔드포인트 Ready 비율)
+    - record: service:availability:ratio
+      expr: avg(kube_endpoint_address_available) by (namespace, service) / avg(kube_endpoint_address_total) by (namespace, service)
+    
+    # 서비스 트래픽 인/아웃
+    - record: service:network_receive_bytes:rate5m
+      expr: sum(rate(container_network_receive_bytes_total{namespace!=""}[5m])) by (namespace, pod)
+    
+    - record: service:network_transmit_bytes:rate5m
+      expr: sum(rate(container_network_transmit_bytes_total{namespace!=""}[5m])) by (namespace, pod)
+    
+    # 서비스 레이턴시 (Istio가 있는 경우 사용가능)
+    - record: service:request_duration_seconds:p99
+      expr: histogram_quantile(0.99, sum(rate(istio_request_duration_milliseconds_bucket{reporter="destination"}[5m])) by (destination_service_namespace, destination_service_name, le)) / 1000 

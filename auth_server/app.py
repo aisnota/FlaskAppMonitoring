@@ -1,4 +1,3 @@
-
 import jwt
 import datetime
 from fastapi import FastAPI, HTTPException, Depends

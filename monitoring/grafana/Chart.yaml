@@ -1,0 +1,5 @@
+apiVersion: v2
+name: wiary-chart
+description: A custom Grafana chart with dashboards
+version: 0.1.0
+appVersion: "9.5.3"

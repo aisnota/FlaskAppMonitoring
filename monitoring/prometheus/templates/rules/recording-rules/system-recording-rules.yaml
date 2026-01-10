@@ -1,0 +1,62 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: system-recording-rules
+  namespace: monitoring
+  labels:
+    app: prometheus
+    role: recording-rules
+spec:
+  groups:
+  - name: k8s.system.rules
+    rules:
+    # CPU 사용률 규칙
+    - record: node:cpu_utilization:avg1m
+      expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100)
+    
+    - record: node:cpu_utilization:avg5m
+      expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+    
+    # 메모리 사용률 규칙
+    - record: node:memory_utilization:percent
+      expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100
+    
+    # 디스크 사용률 규칙
+    - record: node:disk_utilization:percent
+      expr: 100 - ((node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"})
+    
+    # 노드 디스크 IO 규칙
+    - record: node:disk_io_utilization:read_bytes
+      expr: rate(node_disk_read_bytes_total[5m])
+      
+    - record: node:disk_io_utilization:write_bytes
+      expr: rate(node_disk_written_bytes_total[5m])
+    
+    # 네트워크 트래픽 규칙
+    - record: node:network_receive_bytes:rate5m
+      expr: rate(node_network_receive_bytes_total[5m])
+    
+    - record: node:network_transmit_bytes:rate5m
+      expr: rate(node_network_transmit_bytes_total[5m])
+    
+    # 컨테이너 CPU 사용률
+    - record: container:cpu_utilization:percent
+      expr: sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (namespace, pod, container) * 100
+    
+    # 컨테이너 메모리 사용률
+    - record: container:memory_utilization:percent
+      expr: container_memory_working_set_bytes{container!=""} / container_spec_memory_limit_bytes{container!=""} * 100 != +Inf
+
+  - name: k8s.pod.rules
+    rules:
+    # Pod CPU 사용률 규칙
+    - record: pod:cpu_utilization:percent
+      expr: sum(rate(container_cpu_usage_seconds_total{container!="POD", container!=""}[5m])) by (namespace, pod) * 100
+    
+    # Pod 메모리 사용률 규칙
+    - record: pod:memory_utilization:percent
+      expr: sum(container_memory_working_set_bytes{container!="POD", container!=""}) by (namespace, pod) / sum(container_spec_memory_limit_bytes{container!="POD", container!=""}) by (namespace, pod) * 100 != +Inf
+    
+    # Pod 재시작 횟수 규칙
+    - record: pod:restart_count:sum
+      expr: sum(kube_pod_container_status_restarts_total) by (namespace, pod) 
