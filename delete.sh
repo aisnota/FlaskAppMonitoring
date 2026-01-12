@@ -6,4 +6,4 @@ kubectl delete -f k8s/nginx.yaml
 kubectl delete -f k8s/db-config-secret.yaml
 kubectl delete -f k8s/pv-pvc.yaml
 kubectl delete -f k8s/hpa.yaml
-kubectl delete -f k8s/fastapi-servicemonitor.yaml
+# kubectl delete -f k8s/fastapi-servicemonitor.yaml

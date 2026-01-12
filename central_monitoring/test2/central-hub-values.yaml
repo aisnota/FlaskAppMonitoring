@@ -1,0 +1,48 @@
+# prometheus:
+#   prometheusSpec:
+#     scrapeConfigSelector: {}
+#     podMonitorSelector: {}
+#     serviceMonitorSelector: {}
+
+
+grafana:
+  adminPassword: admin123
+  service:
+    type: NodePort
+    nodePort: 32300
+
+prometheus:
+  service:
+    type: NodePort
+    nodePort: 30090
+  prometheusSpec:
+    # [최후의 수단] 모든 수집 경로에 강제로 라벨 주입
+    # 이 설정은 ServiceMonitor 등 모든 수집기에 전역 적용됩니다.
+    additionalScrapeConfigs:
+      - job_name: 'cluster-2-agent'
+        honor_labels: true
+        static_configs:
+          - targets: ['192.168.100.150:30090']  # Cluster 2의 NodePort 주소
+            labels:
+              cluster: 'cluster-2'  # 중앙에서 강제로 라벨 부착
+
+    # [중요] 중앙 마스터 지표에 라벨이 안 붙는 문제 해결 (Global Relabel)
+    # 수집된 모든 데이터가 저장되기 직전에 cluster-1 라벨을 부여함
+    remoteWrite:
+      - url: "http://localhost:9090/api/v1/write" # 자기 자신에게 쏘면서 라벨링 강제
+    
+    # 또는 아래 relabeling을 Spec 바로 아래 레벨에 정확히 위치시킴
+    replicaExternalLabelNameClear: true
+    prometheusExternalLabelNameClear: true
+    externalLabels:
+      cluster: cluster-1
+
+    # 모든 리소스를 다 긁어오도록 강제
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false  # 모든 ServiceMonitor 및 PodMonitor 자동 수집
+    podMonitorSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+
+    enableRemoteWriteReceiver: true
+    retention: 10d  # 기존 데이터 보존 기간 (필요 시 수정)

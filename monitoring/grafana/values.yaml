@@ -1,4 +1,4 @@
-replicaCount: 1  # 복제본 수 (기본 1)
+replicaCount: 3  # 복제본 수 (기본 1)
 
 # 이름 재정의 (선택 사항)
 nameOverride: ""

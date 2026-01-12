@@ -37,6 +37,5 @@ kubectl patch svc central-monitor-kube-prome-prometheus -n monitoring -p '{"spec
 # grapana 접속
 echo "--------------------------------------------------"
 echo "설치 완료! Grafana 접속: http://$(hostname -I | awk '{print $1}'):32300"
-echo "ID: admin / PW:
-kubectl get secret --namespace monitoring central-monitor-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+echo "ID: admin / PW:admin"
 echo "--------------------------------------------------"
