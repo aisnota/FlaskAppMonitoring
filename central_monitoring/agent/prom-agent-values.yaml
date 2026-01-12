@@ -1,0 +1,39 @@
+env:
+  hubIp: "192.168.100.101"   # 중앙 마스터 노드
+  hubPort: "30090"           # 중앙 포트
+  clusterName: "cluste-2" # 전송하는 데이터에 붙는 식별 라벨
+
+server:
+  # http://10.10.10.10:xxxxx 데이터가 송신되는 곳  
+  # cluster-2 이 프로메테우스 에이전트가 수집하는 모든 데이터에 해당 라벨 붙이기
+  remoteWrite:
+    - url: "http://{{ .Values.env.hubIp }}:{{ .Values.env.hubPort }}/api/v1/write"
+      remote_timeout: 120s
+      queue_config:
+        max_samples_per_send: 100
+        max_shards: 10
+  
+  global:
+    external_labels:
+      cluster: "{{ .Values.env.clusterName }}"
+    honorLabels: true
+  
+  persistentVolume:
+    enabled: false
+  
+  # 자원 사용량 제한 (resources):
+  # 에이전트는 데이터 전송이 주 목적이므로 메모리와 CPU를 무제한으로 쓰지 않도록 limits와 requests 명시
+  # VM 환경에서 OOM(Memory 부족)으로 노드가 뻗는 것을 방지
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 512Mi
+
+alertmanager:
+  enabled: false
+
+pushgateway:
+  enabled: false
