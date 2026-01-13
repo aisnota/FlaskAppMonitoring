@@ -5,8 +5,13 @@ set -euo pipefail
 # Config
 # ===============
 NAMESPACE="monitoring"
+# ServiceMonitor의 release 라벨과 일치해야 함.
 RELEASE="monitoring"
 CHART="prometheus-community/kube-prometheus-stack"
+# 그라파나 비밀번호
+ADMIN_PASSWORD="admin123"
+# 그라파나 접속 포트
+GRAFANA_NODEPORT=30200
 
 # ===============
 # 1) Helm 설치(없으면 설치)
@@ -37,18 +42,19 @@ kubectl get ns "${NAMESPACE}" >/dev/null 2>&1 || kubectl create namespace "${NAM
 # 4) 설치/업그레이드 (idempotent)
 # ===============
 echo "[4/6] kube-prometheus-stack 설치/업그레이드: release=${RELEASE}, ns=${NAMESPACE}"
-helm install "${RELEASE}" "${CHART}" \
+helm upgrade --install "${RELEASE}" "${CHART}" \
   -n "${NAMESPACE}" \
-  -f values.yaml \
+  --set grafana.adminPassword="${ADMIN_PASSWORD}" \
+  --set grafana.service.type=NodePort \
+  --set grafana.service.nodePort=${GRAFANA_NODEPORT} \
   --wait \
-  --timeout 10m
+  --timeout 20m
 
 # ===============
 # 5) 상태 확인
 # ===============
 echo "[5/6] 리소스 상태 확인"
 kubectl get pods -n "${NAMESPACE}"
-kubectl get svc  -n "${NAMESPACE}"
 
 # ===============
 # 6) 설치 결과 출력
@@ -56,9 +62,3 @@ kubectl get svc  -n "${NAMESPACE}"
 echo "[6/6] 설치 완료"
 echo "Grafana/Prometheus/Alertmanager Service 목록:"
 kubectl get svc -n "${NAMESPACE}" | egrep 'grafana|prometheus|alertmanager|NAME' || true
-
-# ===============
-# 7) 비밀번호 확인
-# ===============
-echo "해당 비밀번호를 이용해 grapana에 접속하세요"
-kubectl get secret --namespace monitoring monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo

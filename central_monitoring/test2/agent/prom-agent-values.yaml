@@ -21,7 +21,7 @@ server:
           target_label: cluster
           replacement: cluster-2
           action: replace
-          
+
   global:
     external_labels:
       cluster: "{{ .Values.env.clusterName }}"
@@ -64,6 +64,7 @@ alertmanager:
   enabled: false
 pushgateway:
   enabled: false
+  
 # env:
 #   hubIp: "192.168.100.101"   # 중앙 마스터 노드
 #   hubPort: "30090"           # 중앙 포트
