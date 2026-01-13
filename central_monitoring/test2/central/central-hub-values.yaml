@@ -4,7 +4,6 @@
 #     podMonitorSelector: {}
 #     serviceMonitorSelector: {}
 
-
 grafana:
   adminPassword: admin123
   service:
@@ -18,13 +17,13 @@ prometheus:
   prometheusSpec:
     # [최후의 수단] 모든 수집 경로에 강제로 라벨 주입
     # 이 설정은 ServiceMonitor 등 모든 수집기에 전역 적용됩니다.
-    additionalScrapeConfigs:
-      - job_name: 'cluster-2-agent'
-        honor_labels: true
-        static_configs:
-          - targets: ['192.168.100.150:30090']  # Cluster 2의 NodePort 주소
-            labels:
-              cluster: 'cluster-2'  # 중앙에서 강제로 라벨 부착
+    # additionalScrapeConfigs:
+    #   - job_name: 'cluster-2-agent'
+    #     honor_labels: true
+    #     static_configs:
+    #       - targets: ['192.168.100.150:30090']  # Cluster 2의 NodePort 주소
+    #         labels:
+    #           cluster: 'cluster-2'  # 중앙에서 강제로 라벨 부착
 
     # [중요] 중앙 마스터 지표에 라벨이 안 붙는 문제 해결 (Global Relabel)
     # 수집된 모든 데이터가 저장되기 직전에 cluster-1 라벨을 부여함
