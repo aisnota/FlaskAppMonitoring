@@ -1,0 +1,39 @@
+grafana:
+  adminPassword: admin123
+  service:
+    type: NodePort
+    nodePort: 32300
+
+prometheus:
+  service:
+    type: NodePort
+    nodePort: 30090
+  prometheusSpec:
+    # 1. 외부 에이전트(cluster-2)가 보낸 데이터를 받기 위해 반드시 필요
+    enableRemoteWriteReceiver: true
+
+    replicaExternalLabelNameClear: true
+    prometheusExternalLabelNameClear: true
+
+    # 2. 허브 본인(cluster-1)의 데이터에 라벨 부여
+    externalLabels:
+      cluster: cluster-1
+
+    # 3. 모든 ServiceMonitor, PodMonitor 등을 자동으로 찾아서 수집 (Selector 강제 비활성화)
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+
+    # 4. 데이터 보관 주기
+    retention: 10d
+
+    # 5. [참고] 기존 additionalScrapeConfigs 방식은 에이전트가 데이터를 밀어주면(Remote Write) 필요 없습니다.
+    # 만약 에이전트가 데이터를 못 보낼 때를 대비한 백업 수단으로만 남겨두세요.
+    # additionalScrapeConfigs:
+    #   - job_name: 'cluster-2-backup-pull'
+    #     static_configs:
+    #       - targets: ['192.168.100.150:30090']
+    #         labels:
+    #           cluster: 'cluster-2'
