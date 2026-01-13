@@ -1,0 +1,39 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: low-resource-threshold-test
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+  - name: bursting-rules
+    rules:
+    - alert: HighCpuUsageTest
+      # CPU 사용량이 조금이라도 있으면 알람 (테스트용)
+      expr: sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate) > 0.001
+      for: 10s
+      labels:
+        severity: critical
+      annotations:
+        summary: "On-premise 리소스 임계치 초과! EKS로 확장을 시작합니다."
+
+# apiVersion: monitoring.coreos.com/v1
+# kind: PrometheusRule
+# metadata:
+#   name: low-resource-threshold-test
+#   namespace: monitoring
+#   labels:
+#     # 이 라벨이 중요합니다. 설치된 Prometheus가 찾을 수 있게 강제로 맞춤
+#     release: prometheus 
+# spec:
+#   groups:
+#   - name: bursting-rules
+#     rules:
+#     - alert: HighCpuUsageTest
+#       expr: vector(1) # 무조건 1을 반환하여 알람을 즉시 발생시킴 (테스트 최적화)
+#       for: 5s
+#       labels:
+#         severity: critical
+#       annotations:
+#         summary: "자동 알람 테스트 중입니다."

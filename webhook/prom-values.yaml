@@ -1,0 +1,6 @@
+prometheus:
+  prometheusSpec:
+    additionalAlertManagerConfigs:
+      - static_configs:
+          - targets:
+            - "prometheus-kube-prometheus-alertmanager.monitoring.svc.cluster.local:9093"
