@@ -16,8 +16,8 @@ server:
   remoteWrite:
     - url: "http://{{ .Values.env.hubIp }}:{{ .Values.env.hubPort }}/api/v1/write"
       write_relabel_configs:
-        - separator: ;
-          regex: (.*)
+        - source_labels: [__name__] # 모든 지표 이름 선택
+          regex: (.*)               # 모든 지표 매칭
           target_label: cluster
           replacement: cluster-2
           action: replace
