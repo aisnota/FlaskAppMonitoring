@@ -5,8 +5,6 @@ kubectl create namespace monitoring
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
-s
-
 # 3. 설치 실행
 helm install central-monitor prometheus-community/kube-prometheus-stack \
   -f central-hub-values.yaml \
