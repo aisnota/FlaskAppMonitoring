@@ -13,7 +13,7 @@ helm repo update
 # 내부 테스트이기 때문에 nodeport로 진행
 # Cluster 2, 3에서 보낸 지표 데이터 받는 옵션
 helm upgrade --install central-mon prometheus-community/kube-prometheus-stack \
-  -f central-hub-values.yaml \
+  -f central-hub-stack-values.yaml \
   -n monitoring
 
 # 4. 서비스 확인
