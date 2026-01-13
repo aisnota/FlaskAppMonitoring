@@ -11,10 +11,10 @@ helm install central-monitor prometheus-community/kube-prometheus-stack \
   -n monitoring
 
 # 4. 입구(Service) 열기 (Remote Write용)
-kubectl patch svc central-monitor-kube-prome-prometheus -n monitoring -p '{"spec": {"type": "NodePort"}}'
+# kubectl patch svc central-monitor-kube-prome-prometheus -n monitoring -p '{"spec": {"type": "NodePort"}}'
 
 # grapana 접속
 echo "--------------------------------------------------"
 echo "설치 완료! Grafana 접속: http://$(hostname -I | awk '{print $1}'):32300"
-echo "ID: admin / PW:admin"
+echo "ID: admin / PW:admin123"
 echo "--------------------------------------------------"
