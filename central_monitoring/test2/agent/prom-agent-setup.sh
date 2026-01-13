@@ -8,6 +8,6 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 helm repo update
 
 # 3. 데이터 송신기(Prometheus Agent) 설치
-helm upgrade --install prom-agent prometheus-community/prometheus \
+helm upgrade --install prom-agent prometheus-community/kube-prometheus-stack \
   -n monitoring \
-  -f prom-agent-values.yaml
+  -f stack-agent-values.yaml

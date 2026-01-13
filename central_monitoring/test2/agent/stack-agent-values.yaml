@@ -1,0 +1,36 @@
+prometheus:
+  prometheusSpec:
+    externalLabels:
+      cluster: "cluster-2" # 클러스터 식별 라벨
+    
+    remoteWrite:
+      - url: "http://192.168.100.101:30090/api/v1/write"
+        writeRelabelConfigs:
+          - sourceLabels: [__name__]
+            regex: (.*)
+            targetLabel: cluster
+            replacement: "cluster-2"
+            action: replace
+            
+    # 중요: ServiceMonitor를 통해 모든 네임스페이스의 메트릭을 수집하도록 설정
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    storageSpec:
+      emptyDir:
+        sizeLimit: 500Mi
+
+    retention: 10d
+
+# 에이전트에서는 시각화와 알람 기능이 불필요하므로 비활성화
+grafana:
+  enabled: false
+alertmanager:
+  enabled: false
+
+# 노드 및 쿠버네티스 상태 수집기 활성화
+nodeExporter:
+  enabled: true
+kubeStateMetrics:
+  enabled: true
