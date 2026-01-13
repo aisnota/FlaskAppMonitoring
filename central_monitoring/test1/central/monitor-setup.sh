@@ -5,26 +5,7 @@ kubectl create namespace monitoring
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
-# 2. 중앙 집중형 설정 파일 생성 (IP 부분만 본인 환경에 맞게 수정)
-if [[ ! -f central-hub-values.yaml ]]; then
-    cat <<EOF > central-hub-values.yaml
-prometheus:
-  prometheusSpec:
-    enableRemoteWriteReceiver: true
-    retention: 10d
-    # 클러스터 내부 노드(VM1,2,3) 및 앱 자동 수집 설정
-    serviceMonitorSelectorNilUsesHelmValues: false
-    podMonitorSelectorNilUsesHelmValues: false
-    
-
-grafana:
-  service:
-    type: NodePort
-    nodePort: 32300
-EOF
-else
-  echo "central-hub-values.yaml already exists (skipped)"
-fi
+s
 
 # 3. 설치 실행
 helm install central-monitor prometheus-community/kube-prometheus-stack \

@@ -6,14 +6,6 @@ prometheus:
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     
-    # # K8s 외부(Proxmox 호스트, MariaDB VM) 수집 설정
-    # additionalScrapeConfigs:
-    #   - job_name: 'proxmox-host'
-    #     static_configs:
-    #       - targets: ['192.168.0.100:9100']
-    #   - job_name: 'mariadb-vm'
-    #     static_configs:
-    #       - targets: ['192.168.0.110:9100']
 
 grafana:
   service:
@@ -21,4 +13,4 @@ grafana:
     nodePort: 32300
 
   # 비밀번호 설정
-  adminPassword: admin
+  adminPassword: admin123
