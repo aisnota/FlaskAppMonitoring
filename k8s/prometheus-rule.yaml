@@ -6,7 +6,7 @@
 #   name: my-app-alerts
 #   namespace: default
 #   labels:
-#     release: monitoring               # 중앙 Prometheus ruleSelector와 일치
+#     release: prometheus
 #     app.kubernetes.io/instance: monitoring
 # spec:
 #   groups:
@@ -26,3 +26,23 @@
 #       annotations:
 #         summary: "my-app 5xx ratio > 5%"
 #         description: "Sustained 5xx errors for 5m. Check logs and downstream dependencies."
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: low-resource-threshold-test
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+  - name: bursting-rules
+    rules:
+    - alert: HighCpuUsageTest
+      # CPU 사용량이 조금이라도 있으면 알람 (테스트용)
+      expr: sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate) > 0.001
+      for: 10s
+      labels:
+        severity: critical
+      annotations:
+        summary: "On-premise 리소스 임계치 초과! EKS로 확장을 시작합니다."
