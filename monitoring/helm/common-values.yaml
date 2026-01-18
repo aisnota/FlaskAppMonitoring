@@ -1,0 +1,15 @@
+# 모든 노드의 자원(CPU/RAM) 수집 및 K8s 상태 수집 활성화
+rbac:
+  create: true
+
+# 메트릭 수집 엔진 및 에이전트 명시적 활성화
+prometheusOperator:
+  enabled: true
+nodeExporter:
+  enabled: true
+kubeStateMetrics:
+  enabled: true
+
+# 기본 서비스 모니터링 활성화
+defaultRules:
+  create: true

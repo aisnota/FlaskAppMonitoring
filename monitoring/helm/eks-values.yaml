@@ -1,0 +1,18 @@
+# eks-values.yaml
+grafana: { enabled: false }
+alertmanager: { enabled: false }
+
+prometheus:
+  enabled: true
+  prometheusSpec:
+    retention: 2h
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: "gp2"
+          accessModes: ["ReadWriteOnce"]
+          resources: { requests: { storage: "10Gi" } }
+
+server:
+  service:
+    type: ClusterIP

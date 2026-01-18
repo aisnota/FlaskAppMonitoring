@@ -1,0 +1,28 @@
+# 온프레미스 자신과 EKS의 데이터를 긁어오는 규칙
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-server-conf
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      external_labels:
+        monitor: 'central-hub'
+
+    scrape_configs:
+      - job_name: 'prometheus' # 자기 자신 모니터링
+        static_configs:
+          - targets: ['localhost:9090']
+
+      - job_name: 'eks-federation' # EKS 데이터 가져오기
+        honor_labels: true
+        metrics_path: '/federate'
+        params:
+          'match[]':
+            - '{__name__=~".+"}' # 모든 메트릭 수집
+        static_configs:
+          - targets: ['<EKS_PROMETHEUS_IP>:9090'] # 실제 EKS 프로메테우스 IP로 수정
+            labels:
+              cluster: 'eks'

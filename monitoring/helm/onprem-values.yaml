@@ -1,0 +1,68 @@
+# 중앙 허브 설정
+prometheus:
+  prometheusSpec:
+    # [명시적 노드 고정] PC-04에만 배포 (라벨 zone=management 필수)
+    nodeSelector:
+      zone: management
+
+    # [데이터 보관 및 리소스]
+    retention: 30d # 30일동안 보관
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1000m"
+        memory: "2Gi"
+
+    # [저장소] Ceph RBD 연결
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: "rook-ceph-block"
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: "100Gi"
+    
+    # [EKS 데이터 연합]
+    additionalScrapeConfigs:
+      - job_name: 'eks-federation'
+        honor_labels: true
+        metrics_path: '/federate'
+        params:
+          'match[]': ['{__name__=~".+"}']
+        static_configs:
+          - targets: ['<EKS_PROMETHEUS_SVC_IP>:9090']
+            labels:
+              cluster: 'eks'
+
+# [알람 설정] 버스팅 트리거
+serverFiles:
+  alerting_rules.yml:
+    groups:
+      - name: bursting-logic
+        rules:
+          - alert: OnPremResourceExhausted
+            expr: avg(node_cpu_seconds_total{cluster="on-prem", mode="idle"}) < 0.2
+            for: 3m
+            labels:
+              severity: critical
+
+alertmanager:
+  config:
+    receivers:
+      - name: 'eks-burst-webhook'
+        webhook_configs:
+          - url: 'http://<WEBHOOK_RECEIVER_IP>:5000/webhook' # 파이썬 스크립트 주소
+    route:
+      receiver: 'eks-burst-webhook'
+
+grafana:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 32000
+  persistence:
+    enabled: true
+    storageClassName: "rook-ceph-block"
