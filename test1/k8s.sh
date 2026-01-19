@@ -1,60 +1,52 @@
 #!/bin/bash
 
-MASTER_IP="192.168.13.115"
-WORKERS=("192.168.13.116" "192.168.13.117")
-POD_CIDR="192.168.0.0/16"
+echo "[COMMON] 1. 시스템 업데이트 및 필수 패키지 설치"
+apt-get update && apt-get install -y apt-transport-https ca-certificates curl gpg
 
-setup_node_ready() {
-    local node=$1
-    echo "-> $node 환경 설정 중..."
-    ssh -o StrictHostKeyChecking=no $node "
-        # Swap 끄기
-        sudo swapoff -a
-        sudo sed -i '/swap/s/^/#/' /etc/fstab
+echo "[COMMON] 2. 스왑 비활성화"
+swapoff -a
+sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 
-        # 커널 모듈 로드 (에러 방지 핵심)
-        sudo modprobe overlay
-        sudo modprobe br_netfilter
+echo "[COMMON] 3. 커널 모듈 로드 및 네트워크 설정"
+cat <<EOF | tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
 
-        cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
+modprobe overlay
+modprobe br_netfilter
+
+cat <<EOF | tee /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
 net.ipv4.ip_forward                 = 1
 EOF
-        sudo sysctl --system
 
-        # containerd 및 k8s 설치 (이미 설치된 경우 건너뜀)
-        if ! command -v containerd &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y containerd
-            sudo mkdir -p /etc/containerd
-            containerd config default | sudo tee /etc/containerd/config.toml > /dev/null
-            sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
-            sudo systemctl restart containerd
-        fi
-    "
-}
+sysctl --system
 
-# 1. 모든 노드 사전 준비
-setup_node_ready localhost
-for worker in "${WORKERS[@]}"; do setup_node_ready $worker; done
+echo "[COMMON] 4. 컨테이너 런타임 (containerd) 설치"
+apt-get install -y containerd
 
-# 2. Master 초기화 (커널 설정 적용 후 실행)
-sudo kubeadm init --apiserver-advertise-address=$MASTER_IP --pod-network-cidr=$POD_CIDR --ignore-preflight-errors=FileContent--proc-sys-net-bridge-bridge-nf-call-iptables
+echo "[COMMON] 5. containerd 설정 (systemd cgroup 드라이버 사용)"
+mkdir -p /etc/containerd
+containerd config default | tee /etc/containerd/config.toml
+sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
 
-# 3. 권한 설정
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+systemctl restart containerd
+systemctl enable containerd
 
-# 4. Calico CNI 설치
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/tigera-operator.yaml
-sleep 5
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/custom-resources.yaml
+echo "[COMMON] 6. 쿠버네티스 패키지 설치 (kubelet, kubeadm, kubectl)"
+# Google Cloud public signing key 추가
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
-# 5. Worker Join
-JOIN_CMD=$(kubeadm token create --print-join-command)
-for worker in "${WORKERS[@]}"; do
-    ssh $worker "sudo $JOIN_CMD"
-done
+# Kubernetes apt repository 추가
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
 
-echo "Cluster setup complete. Check status with: kubectl get nodes"
+apt-get update
+KUBE_VERSION="1.30.1-1.1"
+apt-get install -y kubelet=${KUBE_VERSION} kubeadm=${KUBE_VERSION} kubectl=${KUBE_VERSION}
+apt-mark hold kubelet kubeadm kubectl
+
+echo "[COMMON] 모든 노드 공통 설정 완료."
+echo "================================================================================================="
+

@@ -16,3 +16,9 @@ DATABASE_PORT = os.environ.get("DATABASE_PORT", "3306")
 DATABASE_USER = os.environ.get("DATABASE_USER")
 DATABASE_PASSWORD = os.environ.get("DATABASE_PASSWORD")
 DATABASE_DB_NAME = os.environ.get("DATABASE_DB_NAME")
+
+# config.py에 추가할 내용
+DB_HOST = '192.168.13.120'
+DB_USER = 'kosa'
+DB_PASS = 'kosa1004'
+DB_NAME = 'testdb'

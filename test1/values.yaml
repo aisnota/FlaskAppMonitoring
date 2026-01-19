@@ -1,0 +1,19 @@
+prometheus:
+  prometheusSpec:
+    additionalScrapeConfigs:
+      - job_name: 'external-db-node'
+        static_configs:
+          - targets: ['192.168.13.120:9100'] # OS 자원 지표
+      - job_name: 'external-mariadb'
+        static_configs:
+          - targets: ['192.168.13.120:9104'] # MariaDB 지표
+
+grafana:
+  enabled: true
+  service:
+    type: NodePort
+    nodePort: 32000
+
+    # 비밀번호 설정
+  adminPassword: admin123
+          
