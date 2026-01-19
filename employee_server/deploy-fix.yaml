@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: employee-server
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: employee-server
+  template:
+    metadata:
+      labels:
+        app: employee-server
+    spec:
+      containers:
+      - name: employee-server
+        image: hisieun/employee_server:v2.01
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: RESTART_DATE
+          value: "202601190649"
+        envFrom:
+        - configMapRef:
+            name: db-config
+        - secretRef:
+            name: db-credentials
+        ports:
+        - containerPort: 5002
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 200m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: app-code
+          mountPath: /app/application.py
+          subPath: application.py
+      volumes:
+      - name: app-code
+        configMap:
+          name: employee-app-code

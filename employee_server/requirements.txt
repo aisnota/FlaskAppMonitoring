@@ -13,3 +13,4 @@ python-multipart       # multipart/form-data 파싱 지원
 httpx                  # 비동기 HTTP 요청 라이브러리
 pymysql
 
+pymysql

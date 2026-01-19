@@ -2,9 +2,13 @@ prometheus:
   prometheusSpec:
     additionalScrapeConfigs:
       - job_name: 'external-db-node'
+        scrape_interval: 10s
+        scrape_timeout: 5s
         static_configs:
           - targets: ['192.168.13.120:9100'] # OS 자원 지표
       - job_name: 'external-mariadb'
+        scrape_interval: 10s
+        scrape_timeout: 5s
         static_configs:
           - targets: ['192.168.13.120:9104'] # MariaDB 지표
 

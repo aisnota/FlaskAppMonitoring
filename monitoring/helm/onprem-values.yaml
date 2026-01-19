@@ -3,7 +3,12 @@ prometheus:
   prometheusSpec:
     # [명시적 노드 고정] PC-04에만 배포 (라벨 zone=management 필수)
     nodeSelector:
-      zone: management
+      zone: management  # 1. PC-04를 찾아가게 함
+    tolerations:        # 2. PC-04의 문지기를 통과하는 출입증
+      - key: "dedicated"
+        operator: "Equal"
+        value: "management"
+        effect: "NoSchedule"
 
     # [데이터 보관 및 리소스]
     retention: 30d # 30일동안 보관
@@ -66,3 +71,11 @@ grafana:
   persistence:
     enabled: true
     storageClassName: "rook-ceph-block"
+  nodeSelector:
+    zone: management
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "management"
+      effect: "NoSchedule"
+  adminPassword: admin123
